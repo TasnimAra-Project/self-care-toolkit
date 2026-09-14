@@ -22,7 +22,9 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return emptyPlan()
-    return { ...emptyPlan(), ...JSON.parse(raw) }
+    const saved = { ...emptyPlan(), ...JSON.parse(raw) }
+    if (saved.view === 'needs') saved.view = 'daily'
+    return saved
   } catch {
     return emptyPlan()
   }

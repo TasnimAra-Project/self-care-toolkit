@@ -46,7 +46,15 @@ export default function Shell({ view, onNavigate, starting, children }) {
   )
 }
 
-export function FooterNav({ back, next, nextLabel = 'Continue', backLabel = 'Back' }) {
+export function FooterNav({
+  back,
+  next,
+  nextLabel = 'Continue',
+  backLabel = 'Back',
+  downloadLabel,
+  downloading = false,
+  onDownload,
+}) {
   return (
     <div className="footer-nav">
       {back ? (
@@ -56,11 +64,23 @@ export function FooterNav({ back, next, nextLabel = 'Continue', backLabel = 'Bac
       ) : (
         <span />
       )}
-      {next && (
-        <button type="button" className="btn btn-primary" onClick={next}>
-          {nextLabel}
-        </button>
-      )}
+      <div className="footer-nav-actions">
+        {onDownload && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onDownload}
+            disabled={downloading}
+          >
+            {downloading ? 'Preparing PDF…' : downloadLabel}
+          </button>
+        )}
+        {next && (
+          <button type="button" className="btn btn-primary" onClick={next}>
+            {nextLabel}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

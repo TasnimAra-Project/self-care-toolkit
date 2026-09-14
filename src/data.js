@@ -215,18 +215,17 @@ export const SMART = [
 
 export const STEPS = [
   { id: 'evaluate', number: 1, label: 'Evaluate' },
-  { id: 'needs', number: 2, label: 'Needs' },
-  { id: 'daily', number: 3, label: 'Daily Plan' },
-  { id: 'emergency-needs', number: 4, label: 'Emergency Needs' },
-  { id: 'emergency-plan', number: 5, label: 'Emergency Plan' },
-  { id: 'goals', number: 6, label: 'Goals' },
+  { id: 'daily', number: 2, label: 'Daily Plan' },
+  { id: 'emergency-needs', number: 3, label: 'Emergency Needs' },
+  { id: 'emergency-plan', number: 4, label: 'Emergency Plan' },
+  { id: 'goals', number: 5, label: 'Goals' },
 ]
 
 export const COPY = {
   whatIs:
     'Self-care is defined as the daily process of being aware of and attending to one’s basic physiological and emotional needs, including the shaping of one’s daily routine, relationships, and environment as needed to promote self-care.',
   noOneSize:
-    'When it comes to self-care plans, there is no one-size-fits-all option. We all have different needs, strengths, and limitations. The following is a six-step process that will help you build a plan that’s just right for you.',
+    'When it comes to self-care plans, there is no one-size-fits-all option. We all have different needs, strengths, and limitations. The following is a five-step process that will help you build a plan that’s just right for you.',
   step1:
     'Examining your own habits is an important first step in developing a self-care plan.',
   step2:

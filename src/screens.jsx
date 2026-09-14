@@ -3,8 +3,6 @@ import {
   ADDITIONAL_EXAMPLES,
   COPY,
   EMERGENCY_TOOLS,
-  HARMFUL_EXAMPLES,
-  HELPFUL_EXAMPLES,
   PLANNER_ORDER,
   SMART,
   dimById,
@@ -13,6 +11,7 @@ import {
 import Wheel from './components/Wheel'
 import { CornerFlowers, Hibiscus } from './components/Decor'
 import { FooterNav, SectionHead } from './components/Shell'
+import { extractEmergencyChoices } from './planUtils'
 
 function appendLine(current, item) {
   const lines = (current || '')
@@ -27,6 +26,22 @@ function setIndex(arr, i, value) {
   const next = [...arr]
   next[i] = value
   return next
+}
+
+function useSectionDownload(exporterName, plan) {
+  const [downloading, setDownloading] = useState(false)
+
+  async function download() {
+    setDownloading(true)
+    try {
+      const mod = await import('./exportPdf')
+      mod[exporterName](plan)
+    } finally {
+      window.setTimeout(() => setDownloading(false), 400)
+    }
+  }
+
+  return { downloading, download }
 }
 
 export function Cover({ onBegin, onResume, canResume }) {
@@ -173,44 +188,10 @@ export function Evaluate({ plan, setPlan, onNext, onBack, startId }) {
   )
 }
 
-export function Needs({ startId, onNext, onBack }) {
-  const dims = orderedDimensions(startId)
-  return (
-    <section className="page">
-      <SectionHead kicker="Step 2" title="Identify Your Self-Care Needs">
-        <p>{COPY.step2}</p>
-        <p>{COPY.step2Reflect}</p>
-      </SectionHead>
-      <div className="table-wrap">
-        <table className="needs-table">
-          <thead>
-            <tr>
-              <th>Area of Self-Care</th>
-              <th>Examples of self-care practices in that area:</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dims.map((d) => (
-              <tr key={d.id} className={startId === d.id ? 'is-start' : ''}>
-                <td>
-                  <strong>{d.name}</strong>
-                  {startId === d.id && <span className="tag">Start</span>}
-                </td>
-                <td>{d.examples}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="lede">{COPY.step3Intro}</p>
-      <FooterNav back={onBack} next={onNext} nextLabel="Open daily planner" />
-    </section>
-  )
-}
-
 export function DailyPlanner({ plan, setPlan, startId, onNext, onBack }) {
   const dims = orderedDimensions(startId)
   const [focusId, setFocusId] = useState(startId || dims[0].id)
+  const { downloading, download } = useSectionDownload('downloadDailyPdf', plan)
 
   function setDaily(id, value) {
     setPlan((p) => ({ ...p, daily: { ...p.daily, [id]: value } }))
@@ -225,7 +206,9 @@ export function DailyPlanner({ plan, setPlan, startId, onNext, onBack }) {
 
   return (
     <section className="page">
-      <SectionHead kicker="Step 3" title="Create a Daily Self-Care Planner">
+      <SectionHead kicker="Step 2" title="Create a Daily Self-Care Planner">
+        <p>{COPY.step2}</p>
+        <p>{COPY.step2Reflect}</p>
         <p>{COPY.step3Intro}</p>
         <p>{COPY.dailyPrompt}</p>
       </SectionHead>
@@ -265,7 +248,14 @@ export function DailyPlanner({ plan, setPlan, startId, onNext, onBack }) {
           </button>
         ))}
       </div>
-      <FooterNav back={onBack} next={onNext} nextLabel="Emergency self-care" />
+      <FooterNav
+        back={onBack}
+        next={onNext}
+        nextLabel="Emergency self-care"
+        downloadLabel="Download daily planner PDF"
+        downloading={downloading}
+        onDownload={download}
+      />
     </section>
   )
 }
@@ -283,7 +273,7 @@ export function EmergencyNeeds({ plan, setPlan, onNext, onBack }) {
 
   return (
     <section className="page">
-      <SectionHead kicker="Step 4" title="Identify your Emergency Self-Care Needs">
+      <SectionHead kicker="Step 3" title="Identify your Emergency Self-Care Needs">
         <p>{COPY.step4Intro}</p>
         <p>{COPY.step4Reflect}</p>
       </SectionHead>
@@ -330,6 +320,9 @@ export function EmergencyNeeds({ plan, setPlan, onNext, onBack }) {
 }
 
 export function EmergencyPlanner({ plan, setPlan, onNext, onBack }) {
+  const choices = extractEmergencyChoices(plan)
+  const { downloading, download } = useSectionDownload('downloadEmergencyPlanPdf', plan)
+
   function add(kind, item) {
     setPlan((p) => {
       const key = kind === 'helpful' ? 'emergencyHelpful' : 'emergencyHarmful'
@@ -344,7 +337,12 @@ export function EmergencyPlanner({ plan, setPlan, onNext, onBack }) {
 
   return (
     <section className="page">
-      <SectionHead kicker="Step 5" title="Create an Emergency Self-Care Planner" />
+      <SectionHead kicker="Step 4" title="Create an Emergency Self-Care Planner">
+        <p>
+          Choose from the helpful and harmful strategies you wrote in Step 3,
+          or type your own top five for each list.
+        </p>
+      </SectionHead>
       <div className="emergency-grid">
         <div className="em-col helpful">
           <h2>Helpful (to do)</h2>
@@ -383,27 +381,42 @@ export function EmergencyPlanner({ plan, setPlan, onNext, onBack }) {
       </div>
       <div className="example-split">
         <div>
-          <h3 className="orange-bar">Helpful</h3>
-          <div className="chips">
-            {HELPFUL_EXAMPLES.map((ex) => (
-              <button key={ex} type="button" className="chip" onClick={() => add('helpful', ex)}>
-                {ex}
-              </button>
-            ))}
-          </div>
+          <h3 className="orange-bar">From Step 3: Helpful</h3>
+          {choices.helpful.length ? (
+            <div className="chips">
+              {choices.helpful.map((ex) => (
+                <button key={ex} type="button" className="chip" onClick={() => add('helpful', ex)}>
+                  {ex}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Fill in Step 3 first to see your helpful options here.</p>
+          )}
         </div>
         <div>
-          <h3 className="orange-bar">Not helpful</h3>
-          <div className="chips">
-            {HARMFUL_EXAMPLES.map((ex) => (
-              <button key={ex} type="button" className="chip" onClick={() => add('harmful', ex)}>
-                {ex}
-              </button>
-            ))}
-          </div>
+          <h3 className="orange-bar">From Step 3: Not helpful</h3>
+          {choices.harmful.length ? (
+            <div className="chips">
+              {choices.harmful.map((ex) => (
+                <button key={ex} type="button" className="chip" onClick={() => add('harmful', ex)}>
+                  {ex}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Fill in Step 3 first to see your harmful options here.</p>
+          )}
         </div>
       </div>
-      <FooterNav back={onBack} next={onNext} nextLabel="Set goals" />
+      <FooterNav
+        back={onBack}
+        next={onNext}
+        nextLabel="Set goals"
+        downloadLabel="Download emergency plan PDF"
+        downloading={downloading}
+        onDownload={download}
+      />
     </section>
   )
 }
@@ -411,7 +424,7 @@ export function EmergencyPlanner({ plan, setPlan, onNext, onBack }) {
 export function Goals({ plan, setPlan, onNext, onBack }) {
   return (
     <section className="page">
-      <SectionHead kicker="Step 6" title="Set Achievable Goals for Yourself">
+      <SectionHead kicker="Step 5" title="Set Achievable Goals for Yourself">
         <p>{COPY.step6Intro}</p>
         <p>{COPY.smartIntro}</p>
       </SectionHead>

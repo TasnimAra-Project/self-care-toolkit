@@ -6,7 +6,7 @@ function blank(value) {
   return text || '-'
 }
 
-export function downloadPlanPdf(plan) {
+function buildPdf(plan) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' })
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
@@ -38,11 +38,13 @@ export function downloadPlanPdf(plan) {
     }
   }
 
+  function newPage() {
+    doc.addPage()
+    y = m
+  }
+
   function need(height) {
-    if (y + height > pageH - 52) {
-      doc.addPage()
-      y = m
-    }
+    if (y + height > pageH - 52) newPage()
   }
 
   function band(title, fill) {
@@ -66,9 +68,11 @@ export function downloadPlanPdf(plan) {
     y += lines.length * (size + 3) + gap
   }
 
-  function labeledBlock(label, value) {
+  function labeledBlock(label, value, { compact = false } = {}) {
     const lines = doc.splitTextToSize(blank(value), maxW - 16)
-    const h = 22 + lines.length * 13 + 10
+    const lineH = compact ? 11 : 13
+    const minBody = compact ? 28 : 36
+    const h = 22 + Math.max(minBody, lines.length * lineH) + 8
     need(h)
     doc.setDrawColor(...teal)
     doc.setLineWidth(1)
@@ -76,87 +80,143 @@ export function downloadPlanPdf(plan) {
     doc.setFillColor(243, 226, 255)
     doc.rect(m, y, maxW, 20, 'F')
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
+    doc.setFontSize(compact ? 9 : 10)
     doc.setTextColor(...navy)
     doc.text(label, m + 8, y + 14)
     doc.setFont('helvetica', 'normal')
-    doc.text(lines, m + 8, y + 36)
-    y += h + 8
+    doc.setFontSize(compact ? 9 : 10)
+    doc.text(lines, m + 8, y + 34)
+    y += h + (compact ? 4 : 8)
   }
 
-  const starting = dimById(plan.startingDimension)
-  const today = new Date().toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  function titleBlock(subtitle) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(22)
+    doc.setTextColor(...magenta)
+    doc.text('Self-Care Toolkit', m, y)
+    y += 26
+    para(subtitle, { size: 13, bold: true, gap: 6 })
+    para(
+      `Saved on ${new Date().toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })}`,
+      { size: 10, color: muted, gap: 14 },
+    )
+  }
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(22)
-  doc.setTextColor(...magenta)
-  doc.text('Self-Care Toolkit', m, y)
-  y += 26
+  function renderDailySection({ compact = false, withTitle = true, onePage = false } = {}) {
+    if (withTitle) band('My Daily Self-Care Plan', lavender)
+    para('Favorite practices for each category:', { size: 9, color: muted, gap: 10 })
 
-  para('My completed self-care plan', { size: 13, bold: true, gap: 6 })
-  para(`Saved on ${today}`, { size: 10, color: muted, gap: 6 })
-  para(
-    starting
-      ? `Starting dimension: ${starting.name}`
-      : 'Starting dimension: not selected',
-    { size: 11, bold: true, gap: 16 },
-  )
+    if (onePage) {
+      const colW = (maxW - 12) / 2
+      const cellH = 92
+      const startY = y
+      PLANNER_ORDER.forEach((id, index) => {
+        const col = index % 2
+        const row = Math.floor(index / 2)
+        const x = m + col * (colW + 12)
+        const cellY = startY + row * (cellH + 10)
+        const d = dimById(id)
+        const lines = doc.splitTextToSize(blank(plan.daily?.[id]), colW - 16)
+        doc.setDrawColor(...teal)
+        doc.setLineWidth(1)
+        doc.rect(x, cellY, colW, cellH)
+        doc.setFillColor(243, 226, 255)
+        doc.rect(x, cellY, colW, 18, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(...navy)
+        doc.text(d.name, x + 8, cellY + 12)
+        doc.setFont('helvetica', 'normal')
+        doc.text(lines.slice(0, 4), x + 8, cellY + 32)
+      })
+      y = startY + 4 * (cellH + 10) + 8
+      return
+    }
 
-  band('Step 1: Evaluate your current state', cyan)
-  para('How well you are attending to each dimension right now (1 needs attention · 5 thriving).', {
-    size: 9,
-    color: muted,
-    gap: 10,
-  })
-  DIMENSIONS.forEach((d) => {
-    const score = plan.ratings?.[d.id]
-    const label = score ? `${score} / 5` : 'Not rated'
-    para(`${d.name}: ${label}`, { size: 10, gap: 4 })
-  })
-  y += 10
+    PLANNER_ORDER.forEach((id) => {
+      labeledBlock(dimById(id).name, plan.daily?.[id], { compact })
+    })
+  }
 
-  band('My Daily Self-Care Plan', lavender)
-  para('Favorite practices for each category:', { size: 9, color: muted, gap: 10 })
-  PLANNER_ORDER.forEach((id) => {
-    const d = dimById(id)
-    labeledBlock(d.name, plan.daily?.[id])
-  })
+  function renderEmergencyNeedsSection() {
+    band('Emergency Self-Care Needs', cyan)
+    EMERGENCY_TOOLS.forEach((tool) => {
+      const row = plan.emergencyNeeds?.[tool.id] || { helpful: '', harmful: '' }
+      para(tool.name, { size: 11, bold: true, gap: 4 })
+      para(`Helpful (what to do): ${blank(row.helpful)}`, { size: 10, gap: 4 })
+      para(`Harmful (what to avoid): ${blank(row.harmful)}`, { size: 10, gap: 12 })
+    })
+  }
 
-  band('Step 4: Emergency self-care needs', cyan)
-  EMERGENCY_TOOLS.forEach((tool) => {
-    const row = plan.emergencyNeeds?.[tool.id] || { helpful: '', harmful: '' }
-    para(tool.name, { size: 11, bold: true, gap: 4 })
-    para(`Helpful (what to do): ${blank(row.helpful)}`, { size: 10, gap: 4 })
-    para(`Harmful (what to avoid): ${blank(row.harmful)}`, { size: 10, gap: 12 })
-  })
+  function renderEmergencyPlanSection() {
+    band('My Emergency Self-Care Plan', cyan)
+    para('Helpful (to do)', { size: 11, bold: true, gap: 4 })
+    ;(plan.emergencyHelpful || []).forEach((item, i) => {
+      para(`${i + 1}. ${blank(item)}`, { size: 10, gap: 4 })
+    })
+    y += 8
+    para('Harmful (to avoid)', { size: 11, bold: true, gap: 4 })
+    ;(plan.emergencyHarmful || []).forEach((item, i) => {
+      para(`${i + 1}. ${blank(item)}`, { size: 10, gap: 4 })
+    })
+  }
 
-  band('My Emergency Self-Care Plan', cyan)
-  para('Helpful (to do)', { size: 11, bold: true, gap: 4 })
-  ;(plan.emergencyHelpful || []).forEach((item, i) => {
-    para(`${i + 1}. ${blank(item)}`, { size: 10, gap: 4 })
-  })
-  y += 8
-  para('Harmful (to avoid)', { size: 11, bold: true, gap: 4 })
-  ;(plan.emergencyHarmful || []).forEach((item, i) => {
-    para(`${i + 1}. ${blank(item)}`, { size: 10, gap: 4 })
-  })
-  y += 10
+  function renderGoalsSection() {
+    band('My Goals', peach)
+    ;(plan.goals || []).forEach((goal, i) => {
+      para(`${i + 1}. ${blank(goal)}`, { size: 11, gap: 8 })
+    })
+  }
 
-  band('My Goals', peach)
-  ;(plan.goals || []).forEach((goal, i) => {
-    para(`${i + 1}. ${blank(goal)}`, { size: 11, gap: 8 })
-  })
+  return {
+    doc,
+    titleBlock,
+    band,
+    para,
+    renderDailySection,
+    renderEmergencyNeedsSection,
+    renderEmergencyPlanSection,
+    renderGoalsSection,
+    addFooter,
+    newPage,
+    muted,
+    cyan,
+    DIMENSIONS,
+  }
+}
 
-  y += 8
-  para(
-    'Look at this plan regularly. Update it with what works and what does not. This PDF is your copy. Answers in the web app stay only on the device where you typed them.',
-    { size: 9, color: muted, gap: 0 },
-  )
+export function downloadDailyPdf(plan) {
+  const pdf = buildPdf(plan)
+  pdf.titleBlock('My Daily Self-Care Plan')
+  pdf.renderDailySection({ compact: true, withTitle: false })
+  pdf.addFooter()
+  pdf.doc.save('daily-self-care-plan.pdf')
+}
 
-  addFooter()
-  doc.save('self-care-plan.pdf')
+export function downloadEmergencyPlanPdf(plan) {
+  const pdf = buildPdf(plan)
+  pdf.titleBlock('My Emergency Self-Care Plan')
+  pdf.renderEmergencyNeedsSection()
+  pdf.renderEmergencyPlanSection()
+  pdf.addFooter()
+  pdf.doc.save('emergency-self-care-plan.pdf')
+}
+
+export function downloadPlanPdf(plan) {
+  const pdf = buildPdf(plan)
+
+  pdf.titleBlock('My one-sheet self-care planner')
+  pdf.renderDailySection({ onePage: true })
+
+  pdf.newPage()
+  pdf.renderEmergencyNeedsSection()
+  pdf.renderEmergencyPlanSection()
+  pdf.renderGoalsSection()
+
+  pdf.addFooter()
+  pdf.doc.save('self-care-plan.pdf')
 }

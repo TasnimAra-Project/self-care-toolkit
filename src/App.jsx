@@ -11,7 +11,6 @@ import {
   Evaluate,
   Goals,
   Intro,
-  Needs,
   OneSheet,
 } from './screens'
 
@@ -20,7 +19,6 @@ const FLOW = [
   'intro',
   'wheel',
   'evaluate',
-  'needs',
   'daily',
   'emergency-needs',
   'emergency-plan',
@@ -57,7 +55,10 @@ export default function App() {
       <Cover
         onBegin={() => go('intro')}
         canResume={plan.view && plan.view !== 'cover'}
-        onResume={() => go(plan.view === 'cover' ? 'intro' : plan.view)}
+        onResume={() => {
+          const resumeView = plan.view === 'needs' ? 'daily' : plan.view
+          go(resumeView === 'cover' ? 'intro' : resumeView)
+        }}
       />
     )
   else if (view === 'intro') screen = <Intro onNext={next} />
@@ -80,8 +81,6 @@ export default function App() {
         onBack={back}
       />
     )
-  else if (view === 'needs')
-    screen = <Needs startId={startId} onNext={next} onBack={back} />
   else if (view === 'daily')
     screen = (
       <DailyPlanner

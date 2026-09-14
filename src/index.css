@@ -483,6 +483,12 @@ img, svg { display: block; max-width: 100%; }
 }
 .hibiscus { width: 56px; height: 56px; margin: 0 auto 8px; }
 
+.footer-nav-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .save-note {
   background: #e3f3ff;
   border: 1px solid var(--sky);
@@ -501,6 +507,14 @@ img, svg { display: block; max-width: 100%; }
   margin: 0;
   padding: 10px 14px;
   font-size: 1.15rem;
+}
+.os-block.lavender {
+  break-after: page;
+  page-break-after: always;
+}
+.os-block.cyan {
+  break-before: page;
+  page-break-before: always;
 }
 .os-block.lavender h2 { background: var(--lavender); }
 .os-block.cyan h2 { background: var(--cyan); }
@@ -539,11 +553,23 @@ img, svg { display: block; max-width: 100%; }
 }
 
 @media print {
-  .topbar, .start-banner, .footer-nav, .print-actions, .save-note, .section-head .lede, .kicker {
+  .topbar, .start-banner, .footer-nav, .print-actions, .save-note, .section-head, .kicker {
     display: none !important;
   }
   .main { padding: 0; }
-  .onesheet-page .section-head h1 { font-size: 18px; }
   .onesheet { border: 0; }
+  .os-block.lavender {
+    break-after: page;
+    page-break-after: always;
+  }
+  .os-block.cyan,
+  .os-block.peach {
+    break-before: auto;
+    page-break-before: auto;
+  }
+  .os-block.cyan {
+    break-before: page;
+    page-break-before: always;
+  }
   body { background: #fff; }
 }
